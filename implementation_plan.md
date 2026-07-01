@@ -529,6 +529,30 @@ Use Google Gemini API to suggest:
 
 ---
 
+### Phase 11: Agentic Loop Journey Generator
+
+#### Backend — `routers/ai.py` + `services/agent_service.py`
+
+**Goal:** Implement a fully autonomous agent loop that takes a natural language prompt, designs a complete journey structure (stages, goals, touchpoints, content), validates it against the expected database schema, and iteratively fixes any errors using the Gemini LLM before saving it to the database.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/ai/generate-journey` | POST | Generate and save a full journey via agent loop |
+
+**Agent Loop Logic (`agent_service.py`):**
+1. **Initial Prompting:** Feed the user's natural language request (e.g., "Create an onboarding journey for B2B SaaS") to Gemini. Enforce a strict JSON output structure representing the `Journey` and its nested `Stages`, `Goals`, `Touchpoints`, and `Content`.
+2. **Validation (Pydantic):** Parse the LLM's JSON response and validate it using strict Pydantic schemas (`JourneyCreate`, `StageCreate`, etc.).
+3. **Iterative Correction (The Loop):** If validation fails (e.g., missing required fields, hallucinated data types), capture the validation errors and send them back to the LLM with a prompt to "Fix the JSON based on these errors". Loop up to `MAX_ITERATIONS` (e.g., 3-5 times).
+4. **Database Insertion:** Once validation succeeds, use `JourneyService` to insert the structured journey into MySQL. Return the created `journey_id`.
+
+#### Frontend — `(dashboard)/journeys/page.tsx` + `AgentModal.tsx`
+- Add a "✨ Generate with AI" button on the Journeys list page.
+- Build an `AgentModal.tsx` component that accepts a text prompt.
+- Show a progress state (e.g., "Agent thinking...", "Validating structure...", "Fixing errors...", "Success!") while waiting for the API.
+- Redirect to the newly generated Journey Builder page upon success.
+
+---
+
 ## Implementation Order
 
 | Phase | What | Dependencies | Estimated | Status |
@@ -543,8 +567,9 @@ Use Google Gemini API to suggest:
 | **8** | Real-time collaboration (WebSockets) | Phase 6 | ~3h | ✅ **Complete** |
 | **9** | Analytics dashboard (charts + aggregation) | Phase 5 | ~3h | ✅ **Complete** |
 | **10** | AI suggestions + Export + Full Testing Suite | Phase 6 | ~3h | ✅ **Complete** |
+| **11** | **Agentic Loop Journey Generator** | Phase 10 | ~4h | ✅ **Complete** |
 
-**Total estimated: ~27 hours of development**
+**Total estimated: ~31 hours of development**
 
 > [!NOTE]
 > **Implementation Status**: As of the latest update, **100%** of the originally proposed functionality has been implemented, including comprehensive backend (`pytest`) and frontend (`vitest`) test suites, PDF/CSV/JSON exports, and WebSocket collaboration.

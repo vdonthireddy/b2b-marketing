@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from app.services.ai_service import AIService
 from app.middleware.auth import get_current_user
 from app.models.user import User
+from app.database import get_db
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -59,3 +60,22 @@ async def suggest_persona(
     service = AIService()
     suggestion = await service.suggest_persona(data.industry, data.role)
     return {"suggestion": suggestion}
+
+
+class GenerateJourneyRequest(BaseModel):
+    prompt: str
+
+
+@router.post("/generate-journey")
+async def generate_journey(
+    data: GenerateJourneyRequest,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Autonomously generate and save a complete journey from natural language."""
+    from app.services.agent_service import AgentService
+    from app.schemas.journey import JourneyResponse
+    
+    agent = AgentService(db)
+    journey = await agent.generate_and_save_journey(data.prompt, current_user.team_id, current_user.id)
+    return JourneyResponse.model_validate(journey)
