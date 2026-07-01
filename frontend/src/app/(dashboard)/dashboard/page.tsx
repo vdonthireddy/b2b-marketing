@@ -39,10 +39,10 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { title: "Total Journeys", value: stats.journey_count, icon: Route, color: "text-primary" },
-    { title: "Personas", value: stats.persona_count, icon: Users, color: "text-accent" },
-    { title: "Team Members", value: stats.member_count, icon: Users, color: "text-blue-400" },
-    { title: "Recent Activity", value: stats.recent_activity_count, icon: Activity, color: "text-orange-400" },
+    { title: "Total Journeys", value: stats.journey_count, icon: Route, color: "text-primary", href: "/journeys" },
+    { title: "Personas", value: stats.persona_count, icon: Users, color: "text-accent", href: "/personas" },
+    { title: "Team Members", value: stats.member_count, icon: Users, color: "text-blue-400", href: "/settings" },
+    { title: "Recent Activity", value: stats.recent_activity_count, icon: Activity, color: "text-orange-400", href: "/analytics" },
   ];
 
   return (
@@ -56,15 +56,17 @@ export default function Dashboard() {
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index} className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-400">{stat.title}</p>
-                <h3 className="text-3xl font-heading font-bold text-white mt-2">{stat.value}</h3>
-              </div>
-              <div className={`p-3 rounded-full bg-secondary-hover ${stat.color}`}>
-                <Icon size={24} />
-              </div>
-            </Card>
+            <Link key={index} href={stat.href} className="block group">
+              <Card className="p-6 flex items-center justify-between hover:border-primary/80 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.15)] transition-all duration-300 cursor-pointer h-full">
+                <div>
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-primary transition-colors">{stat.title}</p>
+                  <h3 className="text-3xl font-heading font-bold text-white mt-2">{stat.value}</h3>
+                </div>
+                <div className={`p-3 rounded-full bg-secondary-hover ${stat.color} group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon size={24} />
+                </div>
+              </Card>
+            </Link>
           );
         })}
       </div>

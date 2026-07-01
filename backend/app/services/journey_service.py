@@ -82,6 +82,14 @@ class JourneyService:
         include_default_stages: bool = True
     ) -> Journey:
         """Create a new journey with optional default stages."""
+        # Check for unique name constraint
+        existing_result = await self.db.execute(select(Journey).where(Journey.name == name))
+        if existing_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A journey with this name already exists. Please choose a unique name."
+            )
+
         journey = Journey(
             team_id=team_id,
             name=name,
@@ -112,6 +120,7 @@ class JourneyService:
         ))
 
         await self.db.flush()
+        await self.db.commit()
 
         # Re-fetch to get stages loaded
         return await self.get_journey(journey.id, team_id)
@@ -121,6 +130,18 @@ class JourneyService:
     ) -> Journey:
         """Update journey metadata."""
         journey = await self.get_journey(journey_id, team_id)
+
+        # Check unique name constraint if name is changing
+        if "name" in updates:
+            new_name = updates["name"]
+            existing_result = await self.db.execute(
+                select(Journey).where(Journey.name == new_name, Journey.id != journey_id)
+            )
+            if existing_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A journey with this name already exists. Please choose a unique name."
+                )
 
         for field, value in updates.items():
             if value is not None and hasattr(journey, field):

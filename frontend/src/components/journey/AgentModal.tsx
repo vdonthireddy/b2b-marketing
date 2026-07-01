@@ -42,7 +42,7 @@ export function AgentModal({ isOpen, onClose }: AgentModalProps) {
     }, 3000);
 
     try {
-      const response = await api.post("/ai/generate-journey", 
+      const response = await api.post("/api/ai/generate-journey", 
         { prompt },
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );

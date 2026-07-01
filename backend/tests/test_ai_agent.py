@@ -52,11 +52,13 @@ async def test_generate_journey_agentic_loop(client, setup_auth):
     }
     '''
     
-    # Mock the generate_content call from google.generativeai
-    with patch("google.generativeai.GenerativeModel.generate_content") as mock_generate:
+    # Mock the generate_content call from google.generativeai and local _generate_ollama from AgentService
+    with patch("google.generativeai.GenerativeModel.generate_content") as mock_generate, \
+         patch("app.services.agent_service.AgentService._generate_ollama") as mock_ollama:
         mock_response = MagicMock()
         mock_response.text = valid_json
         mock_generate.return_value = mock_response
+        mock_ollama.return_value = valid_json
         
         response = await client.post(
             "/api/ai/generate-journey",

@@ -61,3 +61,26 @@ async def test_add_stage_item(client, setup_auth):
     assert res.status_code == 200
     data = res.json()
     assert data["text"] == "Test Goal"
+
+@pytest.mark.asyncio
+async def test_duplicate_journey_name(client, setup_auth):
+    headers = setup_auth["headers"]
+
+    # 1. Create a journey
+    res1 = await client.post("/api/journeys", json={"name": "Unique Journey"}, headers=headers)
+    assert res1.status_code == 200
+
+    # 2. Try creating another journey with the same name -> Expect 400
+    res2 = await client.post("/api/journeys", json={"name": "Unique Journey"}, headers=headers)
+    assert res2.status_code == 400
+    assert "already exists" in res2.json()["detail"]
+
+    # 3. Create a different journey
+    res3 = await client.post("/api/journeys", json={"name": "Unique Journey 2"}, headers=headers)
+    assert res3.status_code == 200
+    j2_id = res3.json()["id"]
+
+    # 4. Try updating the second journey to the first name -> Expect 400
+    res4 = await client.put(f"/api/journeys/{j2_id}", json={"name": "Unique Journey"}, headers=headers)
+    assert res4.status_code == 400
+    assert "already exists" in res4.json()["detail"]

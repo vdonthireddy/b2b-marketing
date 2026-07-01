@@ -3,6 +3,7 @@ from app.models.journey import Journey, JourneyCollaborator
 from app.models.stage import Stage, StageGoal, StageTouchpoint, StageContent
 from app.models.persona import Persona, JourneyPersona
 from app.models.audit_log import AuditLog, JourneySnapshot
+from app.models.lead import Lead
 
 __all__ = [
     "User", "Team", "TeamInvitation",
@@ -10,4 +11,5 @@ __all__ = [
     "Stage", "StageGoal", "StageTouchpoint", "StageContent",
     "Persona", "JourneyPersona",
     "AuditLog", "JourneySnapshot",
+    "Lead",
 ]

@@ -25,6 +25,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Skip interceptor redirection if the failed request was the login request itself
+      if (originalRequest.url?.includes("/api/auth/login")) {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
       const refreshToken = useAuthStore.getState().refreshToken;
       

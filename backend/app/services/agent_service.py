@@ -35,10 +35,16 @@ class LLMJourney(BaseModel):
     stages: List[LLMStage] = Field(min_length=4, description="List of stages in sequential order. Must be at least 4 stages.")
 
 
+import httpx
+
 class AgentService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        if settings.gemini_api_key:
+        self.use_ollama = settings.use_ollama
+        self.ollama_url = settings.ollama_url
+        self.ollama_model = settings.ollama_model
+
+        if not self.use_ollama and settings.gemini_api_key:
             genai.configure(api_key=settings.gemini_api_key)
             self.model = genai.GenerativeModel(
                 "gemini-2.0-flash", 
@@ -47,10 +53,54 @@ class AgentService:
         else:
             self.model = None
 
-    async def generate_and_save_journey(self, prompt_text: str, team_id: str, user_id: str):
-        if not self.model:
+    def _ensure_available(self):
+        if not self.use_ollama and not self.model:
             raise HTTPException(status_code=503, detail="AI service not configured. Missing GEMINI_API_KEY in environment.")
-        
+
+    async def _generate_ollama(self, messages_or_prompt: list, system_prompt: str = "") -> str:
+        ollama_messages = []
+        if system_prompt:
+            ollama_messages.append({"role": "system", "content": system_prompt})
+            
+        for msg in messages_or_prompt:
+            role = msg["role"]
+            if role == "model":
+                role = "assistant"
+            
+            content = ""
+            if "parts" in msg:
+                content = "\n".join(msg["parts"])
+            elif "content" in msg:
+                content = msg["content"]
+            ollama_messages.append({"role": role, "content": content})
+
+        payload = {
+            "model": self.ollama_model,
+            "messages": ollama_messages,
+            "format": "json",
+            "stream": False,
+            "options": {
+                "temperature": 0.0,
+                "num_predict": 2048
+            }
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                resp = await client.post(f"{self.ollama_url}/api/chat", json=payload)
+                if resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Ollama returned error: {resp.text}"
+                    )
+                return resp.json()["message"]["content"]
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to communicate with Ollama: {str(e)}"
+            )
+
+    async def generate_and_save_journey(self, prompt_text: str, team_id: str, user_id: str):
         system_prompt = """
         You are an elite B2B marketing agent. You autonomously create complete customer journey maps.
         The user will give you a prompt. You MUST return a JSON object representing the journey.
@@ -69,9 +119,9 @@ class AgentService:
           ]
         }
         Requirements:
-        1. Produce at least 4 stages.
+        1. Produce exactly 4 stages in the list. Even if the user request is simple, structure it into 4 sequential stages (e.g. Stage 1: Introduction, Stage 2: Wait & Nurture, Stage 3: Conversion/Offer, Stage 4: Follow-up/Onboarding).
         2. Provide at least 1 goal, touchpoint, and content per stage.
-        3. Only output valid JSON.
+        3. Only output valid JSON without any markdown code fences or backticks.
         """
 
         messages = [
@@ -84,16 +134,24 @@ class AgentService:
         for attempt in range(max_retries):
             logger.info(f"Agent Loop Attempt {attempt + 1}")
             try:
-                response = self.model.generate_content(messages)
-                response_text = response.text
+                if self.use_ollama:
+                    response_text = await self._generate_ollama(messages, system_prompt)
+                else:
+                    self._ensure_available()
+                    response = self.model.generate_content(messages)
+                    response_text = response.text
                 
                 # 1. Parse JSON
                 try:
                     data = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     error_msg = f"Failed to parse JSON: {str(e)}. Ensure your output is purely JSON without markdown backticks."
-                    messages.append({"role": "model", "parts": [response_text]})
-                    messages.append({"role": "user", "parts": [error_msg]})
+                    if self.use_ollama:
+                        messages.append({"role": "assistant", "content": response_text})
+                        messages.append({"role": "user", "content": error_msg})
+                    else:
+                        messages.append({"role": "model", "parts": [response_text]})
+                        messages.append({"role": "user", "parts": [error_msg]})
                     last_error = error_msg
                     continue
                 
@@ -102,8 +160,12 @@ class AgentService:
                     validated_journey = LLMJourney(**data)
                 except ValidationError as e:
                     error_msg = f"JSON structure invalid against schema: {e.json()}. Please fix these errors and try again."
-                    messages.append({"role": "model", "parts": [response_text]})
-                    messages.append({"role": "user", "parts": [error_msg]})
+                    if self.use_ollama:
+                        messages.append({"role": "assistant", "content": response_text})
+                        messages.append({"role": "user", "content": error_msg})
+                    else:
+                        messages.append({"role": "model", "parts": [response_text]})
+                        messages.append({"role": "user", "parts": [error_msg]})
                     last_error = error_msg
                     continue
                 

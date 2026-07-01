@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # Gemini AI
     gemini_api_key: str = ""
 
+    # Ollama AI (Local model)
+    use_ollama: bool = False
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "gemma2:2b"
+
     # App
     app_name: str = "JourneyForge API"
     debug: bool = True

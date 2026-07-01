@@ -30,6 +30,9 @@ services:
       - DATABASE_URL=mysql+aiomysql://journeyforge:journeyforge_pass@mysql:3306/journeyforge
       - SECRET_KEY=your_super_secret_key_change_in_production
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - USE_OLLAMA=True
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=gemma2:2b
     depends_on:
       mysql:
         condition: service_healthy
