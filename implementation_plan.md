@@ -1,6 +1,6 @@
 # JourneyForge — Enterprise B2B Customer Journey Mapping Platform
 
-Revised implementation plan for an enterprise-scale application inspired by [Ruler Analytics' customer journey mapping guide](https://www.ruleranalytics.com/blog/analytics/customer-journey-mapping-4/).
+Revised implementation plan for an enterprise-scale application.
 
 ## Architecture Overview
 
